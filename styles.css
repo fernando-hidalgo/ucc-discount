@@ -588,7 +588,6 @@ body {
 .btn--primary {
   background: var(--color-primary);
   color: #fff;
-  width: 100%;
   padding: 11px;
   font-size: 14px;
 }
@@ -599,7 +598,7 @@ body {
 
 .btn--ghost {
   background: #fff;
-  color: var(--color-muted);
+  color: var(--color-text-muted);
   border: 1px solid var(--color-border);
   flex: 1;
   padding: 11px;

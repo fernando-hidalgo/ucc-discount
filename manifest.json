@@ -10,7 +10,7 @@
     }
   },
   "permissions": ["storage"],
-  "optional_host_permissions": [
+  "host_permissions": [
     "https://www.compraentradas.com/*"
   ],
   "background": {

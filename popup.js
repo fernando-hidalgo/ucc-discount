@@ -5,7 +5,6 @@ const VALIDITY_DAYS = 59;
 const WARNING_DAYS = 5;
 const CRITICAL_DAYS = 2;
 const ACTIVATION_WAIT_DAYS = 2;
-const VALIDATION_ORIGIN = "https://www.compraentradas.com/*";
 const VALIDATION_DEBOUNCE_MS = 500;
 
 const tabButtons = document.querySelectorAll(".tabs__btn");
@@ -35,7 +34,6 @@ let listSort = "expiry";
 let validationState = { status: "idle", code: "" };
 let validationRequestId = 0;
 let validationDebounceTimer = null;
-let permissionRequested = false;
 
 // ─── Code validation ────────────────────────────────────────────────────────
 
@@ -43,31 +41,7 @@ function isSavableStatus(status) {
   return status === "valid" || status === "not_yet_valid";
 }
 
-async function hasValidationPermission() {
-  return browser.permissions.contains({ origins: [VALIDATION_ORIGIN] });
-}
-
-async function requestValidationPermission() {
-  if (permissionRequested) {
-    return hasValidationPermission();
-  }
-
-  permissionRequested = true;
-
-  try {
-    return browser.permissions.request({ origins: [VALIDATION_ORIGIN] });
-  } catch {
-    return hasValidationPermission();
-  }
-}
-
 async function validateCode(code) {
-  const hasPermission = await hasValidationPermission();
-
-  if (!hasPermission) {
-    return { status: "permission" };
-  }
-
   return browser.runtime.sendMessage({
     type: "validate-code",
     code,
@@ -75,15 +49,8 @@ async function validateCode(code) {
 }
 
 function isFormComplete() {
-  const code = codeInput.value.trim();
   const seats = Number.parseInt(seatsInput.value, 10);
-
-  return (
-    code.length > 0 &&
-    Number.isInteger(seats) &&
-    seats >= 1 &&
-    getSelectedDate().length > 0
-  );
+  return codeInput.value.trim().length > 0 && Number.isInteger(seats) && seats >= 1;
 }
 
 function resetValidation(skipSave = false) {
@@ -113,7 +80,6 @@ function updateValidationUI() {
     not_yet_valid: "Pendiente: se podrá usar 24h después de su creación",
     seats_redeemed: "Todas las butacas ya han sido canjeadas",
     duplicate: "Este código ya está guardado",
-    permission: "Firefox no ha concedido permiso para comprobar códigos. Recarga la extensión y acepta el permiso del dominio.",
     error: "No se pudo comprobar el código. Revisa tu conexión.",
   };
 
@@ -126,7 +92,7 @@ function updateValidationUI() {
   } else if (validationState.status === "not_yet_valid") {
     codeInput.classList.add("form__input--pending");
   } else if (
-    ["invalid", "expired", "seats_redeemed", "duplicate", "permission", "error"].includes(
+    ["invalid", "expired", "seats_redeemed", "duplicate", "error"].includes(
       validationState.status,
     )
   ) {
@@ -214,8 +180,7 @@ function getToday() {
 }
 
 function isFutureDate(date) {
-  const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  return normalized > getToday();
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()) > getToday();
 }
 
 function canGoToNextMonth() {
@@ -326,22 +291,14 @@ function formatReadableDate(dateStr) {
   }).format(parseLocalDate(dateStr));
 }
 
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
 function getDaysSince(dateStr) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const date = parseLocalDate(dateStr);
-  date.setHours(0, 0, 0, 0);
-  const msPerDay = 1000 * 60 * 60 * 24;
-  return Math.floor((today - date) / msPerDay);
+  return Math.floor((getToday() - parseLocalDate(dateStr)) / MS_PER_DAY);
 }
 
 function getDaysRemaining(expiresAt) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const expiry = parseLocalDate(expiresAt);
-  expiry.setHours(0, 0, 0, 0);
-  const msPerDay = 1000 * 60 * 60 * 24;
-  return Math.floor((expiry - today) / msPerDay);
+  return Math.floor((parseLocalDate(expiresAt) - getToday()) / MS_PER_DAY);
 }
 
 // ─── Storage ────────────────────────────────────────────────────────────────
@@ -530,23 +487,17 @@ function sortCodes(entries) {
 
 function activateTab(tabId, persistDraft = true) {
   activeTabId = tabId;
-
   tabButtons.forEach((btn) => {
-    const isActive = btn.dataset.tab === tabId;
-    btn.classList.toggle("tabs__btn--active", isActive);
-    btn.setAttribute("aria-selected", String(isActive));
+    const active = btn.dataset.tab === tabId;
+    btn.classList.toggle("tabs__btn--active", active);
+    btn.setAttribute("aria-selected", String(active));
   });
-
   panels.forEach((panel) => {
-    const isListPanel = panel.id === "panel-list";
-    const show = (tabId === "list" && isListPanel) || (tabId === "add" && !isListPanel);
+    const show = panel.id === `panel-${tabId}`;
     panel.classList.toggle("panel--active", show);
     panel.hidden = !show;
   });
-
-  if (persistDraft) {
-    saveFormDraft();
-  }
+  if (persistDraft) saveFormDraft();
 }
 
 // ─── UI: rendering ──────────────────────────────────────────────────────────
@@ -588,11 +539,7 @@ function createCard(item, index) {
   const urgency = getCardUrgency(daysRemaining, waiting);
 
   const card = document.createElement("article");
-  const classes = ["card"];
-  if (urgency === "pending") classes.push("card--pending");
-  if (urgency === "warning") classes.push("card--warning");
-  if (urgency === "critical") classes.push("card--critical");
-  card.className = classes.join(" ");
+  card.className = ["card", urgency !== "normal" ? `card--${urgency}` : ""].join(" ").trim();
 
   const codeEl = document.createElement("p");
   codeEl.className = "card__code";
@@ -616,10 +563,7 @@ function createCard(item, index) {
     meta.append(dateEl);
   }
 
-  const statusClasses = ["card__status"];
-  if (urgency === "pending") statusClasses.push("card__status--pending");
-  if (urgency === "warning") statusClasses.push("card__status--warning");
-  if (urgency === "critical") statusClasses.push("card__status--critical");
+  const statusClasses = ["card__status", urgency !== "normal" ? `card__status--${urgency}` : ""].join(" ").trim();
 
   let statusText;
   if (waiting) {
@@ -635,7 +579,7 @@ function createCard(item, index) {
   const statusEl = createMetaRow(
     createMetaIcon(waiting ? ICONS.pause : ICONS.play),
     statusText,
-    statusClasses.join(" "),
+    statusClasses,
   );
 
   meta.append(statusEl);
@@ -736,11 +680,7 @@ sortButtons.forEach((btn) => {
   });
 });
 
-codeInput.addEventListener("input", async () => {
-  const code = codeInput.value.trim();
-  if (code) {
-    await requestValidationPermission();
-  }
+codeInput.addEventListener("input", () => {
   saveFormDraft();
   scheduleValidation();
 });
