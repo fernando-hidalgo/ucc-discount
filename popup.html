@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UCC Descuentos</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="header">
+    <h1 class="header__title">UCC Descuentos</h1>
+    <p class="header__subtitle">Válidos 60 días desde su creación</p>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button
+      class="tabs__btn tabs__btn--active"
+      role="tab"
+      aria-selected="true"
+      aria-controls="panel-list"
+      id="tab-list"
+      data-tab="list"
+    >
+      Mis códigos
+    </button>
+    <button
+      class="tabs__btn"
+      role="tab"
+      aria-selected="false"
+      aria-controls="panel-add"
+      id="tab-add"
+      data-tab="add"
+    >
+      Añadir código
+    </button>
+  </nav>
+
+  <main class="main">
+    <section
+      class="panel panel--active"
+      id="panel-list"
+      role="tabpanel"
+      aria-labelledby="tab-list"
+    >
+      <div class="list-toolbar">
+        <span class="list-toolbar__label">Ordenar por</span>
+        <div class="sort-toggle" role="group" aria-label="Ordenar por">
+          <button
+            type="button"
+            class="sort-toggle__btn sort-toggle__btn--active"
+            data-sort="expiry"
+            title="Próximo a caducar"
+            aria-label="Ordenar por próximo a caducar"
+            aria-pressed="true"
+          >
+            <svg class="sort-toggle__icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="sort-toggle__btn"
+            data-sort="seats"
+            title="Número de butacas"
+            aria-label="Ordenar por número de butacas"
+            aria-pressed="false"
+          >
+            <svg class="sort-toggle__icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div id="code-list" class="code-list" aria-live="polite"></div>
+      <p id="empty-list" class="empty-list" hidden>
+        No hay códigos guardados. Añade uno en la pestaña «Añadir código».
+      </p>
+    </section>
+
+    <section
+      class="panel"
+      id="panel-add"
+      role="tabpanel"
+      aria-labelledby="tab-add"
+      hidden
+    >
+      <form id="code-form" class="form" novalidate>
+        <div class="form__group">
+          <label class="form__label" for="code-input">Código de descuento <span class="form__required" aria-hidden="true">*</span></label>
+          <input
+            type="text"
+            id="code-input"
+            class="form__input"
+            placeholder="Ej: 183410766341"
+            autocomplete="off"
+            required
+          >
+          <p id="code-validation" class="code-validation" hidden aria-live="polite"></p>
+        </div>
+
+        <div class="form__group">
+          <label class="form__label" for="seats-input">Número de butacas <span class="form__required" aria-hidden="true">*</span></label>
+          <input
+            type="text"
+            id="seats-input"
+            class="form__input"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            placeholder="Ej: 2"
+            required
+          >
+        </div>
+
+        <div class="form__group">
+          <span class="form__label" id="date-label">Fecha de creación <span class="form__required" aria-hidden="true">*</span></span>
+          <div class="datepicker" id="datepicker">
+            <button
+              type="button"
+              class="datepicker__trigger"
+              id="date-trigger"
+              aria-labelledby="date-label"
+              aria-required="true"
+              aria-expanded="false"
+              aria-controls="date-calendar"
+            >
+              <span id="date-trigger-text"></span>
+              <svg class="datepicker__icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 4v1h8V6H6z"/>
+              </svg>
+            </button>
+            <div class="datepicker__calendar" id="date-calendar" hidden>
+              <div class="datepicker__nav">
+                <button type="button" class="datepicker__nav-btn" id="date-prev" aria-label="Mes anterior">‹</button>
+                <span class="datepicker__month" id="date-month-label"></span>
+                <button type="button" class="datepicker__nav-btn" id="date-next" aria-label="Mes siguiente">›</button>
+              </div>
+              <div class="datepicker__weekdays" aria-hidden="true">
+                <span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span>
+              </div>
+              <div class="datepicker__grid" id="date-grid" role="grid"></div>
+              <button type="button" class="datepicker__today" id="date-today">Ir a hoy</button>
+            </div>
+          </div>
+          <p class="form__hint">Por defecto es hoy. Puedes elegir una fecha pasada para códigos antiguos.</p>
+        </div>
+
+        <div class="form__actions">
+          <button type="button" class="btn btn--ghost" id="clear-form-btn">Limpiar</button>
+          <button type="submit" class="btn btn--primary" id="submit-btn">Guardar</button>
+        </div>
+        <p id="form-message" class="form-message" hidden></p>
+      </form>
+    </section>
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>
