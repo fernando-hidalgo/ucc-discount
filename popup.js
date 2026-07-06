@@ -25,11 +25,16 @@ const dateNext = document.getElementById("date-next");
 const dateToday = document.getElementById("date-today");
 const codeList = document.getElementById("code-list");
 const emptyList = document.getElementById("empty-list");
-const sortButtons = document.querySelectorAll(".sort-toggle__btn");
+const sortButtons = document.querySelectorAll(".sort-toggle__btn[data-sort]");
+const exportBtn = document.getElementById("export-btn");
+const importBtn = document.getElementById("import-btn");
+const importInput = document.getElementById("import-input");
+const listMessage = document.getElementById("list-message");
 const formMessage = document.getElementById("form-message");
 
 let activeTabId = "list";
 let listSort = "expiry";
+let listSortDir = "asc";
 
 let validationState = { status: "idle", code: "" };
 let validationRequestId = 0;
@@ -398,7 +403,7 @@ async function loadFormDraft() {
   const draft = result[DRAFT_KEY];
 
   if (result[SORT_KEY]) {
-    listSort = result[SORT_KEY];
+    loadSortPrefs(result[SORT_KEY]);
     updateSortButtons();
   }
 
@@ -457,29 +462,71 @@ function getCardUrgency(daysRemaining, waiting) {
   return "normal";
 }
 
+const SORT_ICON_PATHS = {
+  expiry: {
+    asc: "M129-276q-86-86-86-209t86-209q86-86 209-86t209 86q86 86 86 209t-86 209q-86 86-209 86t-209-86Zm633 116v-526l-57 57-42-42 129-129 128 129-42 42-56-56v525h-60ZM421-354l41-41-94-94v-149h-60v172l113 112Z",
+    desc: "M129-276q-86-86-86-209t86-209q86-86 209-86t209 86q86 86 86 209t-86 209q-86 86-209 86t-209-86Zm663 116L663-289l42-42 56 56v-525h60v526l57-57 42 42-128 129ZM421-354l41-41-94-94v-149h-60v172l113 112Z",
+  },
+  seats: {
+    asc: "M474-486q26-32 38.5-66t12.5-79q0-45-12.5-79T474-776q76-17 133.5 23T665-631q0 82-57.5 122T474-486Zm216 326v-94q0-51-26-95t-90-74q173 22 236.5 64T874-254v94H690Zm110-289v-100H700v-60h100v-100h60v100h100v60H860v100h-60Zm-593-74q-42-42-42-108t42-108q42-42 108-42t108 42q42 42 42 108t-42 108q-42 42-108 42t-108-42ZM0-160v-94q0-35 18.5-63.5T68-360q72-32 128.5-46T315-420q62 0 118 14t128 46q31 14 50 42.5t19 63.5v94H0Z",
+    desc: "M474-486q26-32 38.5-66t12.5-79q0-45-12.5-79T474-776q76-17 133.5 23T665-631q0 82-57.5 122T474-486Zm216 326v-94q0-51-26-95t-90-74q173 22 236.5 64T874-254v94H690Zm270-389H700v-60h260v60Zm-753 26q-42-42-42-108t42-108q42-42 108-42t108 42q42 42 42 108t-42 108q-42 42-108 42t-108-42ZM0-160v-94q0-35 18.5-63.5T68-360q72-32 128.5-46T315-420q62 0 118 14t128 46q31 14 50 42.5t19 63.5v94H0Z",
+  },
+};
+
+const SORT_LABELS = {
+  expiry: { asc: "Caducidad: menor a mayor", desc: "Caducidad: mayor a menor" },
+  seats: { asc: "Butacas: menor a mayor", desc: "Butacas: mayor a menor" },
+};
+
 function updateSortButtons() {
   sortButtons.forEach((btn) => {
-    const isActive = btn.dataset.sort === listSort;
+    const field = btn.dataset.sort;
+    const isActive = field === listSort;
+    const dir = isActive ? listSortDir : "asc";
+
     btn.classList.toggle("sort-toggle__btn--active", isActive);
     btn.setAttribute("aria-pressed", String(isActive));
+    btn.querySelector("path").setAttribute("d", SORT_ICON_PATHS[field][dir]);
+    btn.title = SORT_LABELS[field][dir];
+    btn.setAttribute("aria-label", btn.title);
   });
+}
+
+async function saveSortPrefs() {
+  await browser.storage.local.set({
+    [SORT_KEY]: { field: listSort, dir: listSortDir },
+  });
+}
+
+function loadSortPrefs(stored) {
+  if (!stored) return;
+
+  if (typeof stored === "string") {
+    listSort = stored;
+    listSortDir = "asc";
+    return;
+  }
+
+  listSort = stored.field === "seats" ? "seats" : "expiry";
+  listSortDir = stored.dir === "desc" ? "desc" : "asc";
 }
 
 function sortCodes(entries) {
   const sorted = [...entries];
+  const dir = listSortDir === "asc" ? 1 : -1;
 
   if (listSort === "seats") {
     return sorted.sort((a, b) => {
       const seatsA = a.item.seats ?? 0;
       const seatsB = b.item.seats ?? 0;
-      if (seatsB !== seatsA) return seatsB - seatsA;
-      return a.daysRemaining - b.daysRemaining;
+      if (seatsA !== seatsB) return (seatsA - seatsB) * dir;
+      return (a.daysRemaining - b.daysRemaining) * dir;
     });
   }
 
   return sorted.sort((a, b) => {
-    if (a.daysRemaining !== b.daysRemaining) return a.daysRemaining - b.daysRemaining;
-    return (b.item.seats ?? 0) - (a.item.seats ?? 0);
+    if (a.daysRemaining !== b.daysRemaining) return (a.daysRemaining - b.daysRemaining) * dir;
+    return ((a.item.seats ?? 0) - (b.item.seats ?? 0)) * dir;
   });
 }
 
@@ -653,6 +700,132 @@ async function copyCode(code, button) {
   }
 }
 
+function showListMessage(text, type = "success") {
+  listMessage.textContent = text;
+  listMessage.className = `list-message list-message--${type}`;
+  listMessage.hidden = false;
+  setTimeout(() => {
+    listMessage.hidden = true;
+  }, 3000);
+}
+
+function normalizeImportedEntry(raw) {
+  if (!raw || typeof raw.code !== "string") return null;
+
+  const code = raw.code.trim();
+  const createdAt = typeof raw.createdAt === "string" ? raw.createdAt : "";
+  const seats = Number.parseInt(raw.seats, 10);
+
+  if (!code || !createdAt || !Number.isInteger(seats) || seats < 1) return null;
+  if (isFutureDate(parseLocalDate(createdAt))) return null;
+
+  const entry = {
+    code,
+    createdAt,
+    expiresAt: typeof raw.expiresAt === "string" ? raw.expiresAt : addDays(createdAt, VALIDITY_DAYS),
+    seats,
+  };
+
+  if (raw.pendingActivation) {
+    entry.pendingActivation = true;
+  }
+
+  return entry;
+}
+
+function parseImportPayload(data) {
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.codes)) return data.codes;
+  return null;
+}
+
+async function exportCodes() {
+  const codes = await getCodes();
+
+  if (codes.length === 0) {
+    showListMessage("No hay códigos para exportar.", "error");
+    return;
+  }
+
+  const payload = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    codes,
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `ucc-descuentos-${formatDateForInput(new Date())}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+
+  showListMessage(`${codes.length} código${codes.length === 1 ? "" : "s"} exportado${codes.length === 1 ? "" : "s"}.`);
+}
+
+async function importCodes(file) {
+  let data;
+
+  try {
+    data = JSON.parse(await file.text());
+  } catch {
+    showListMessage("El archivo no es un JSON válido.", "error");
+    return;
+  }
+
+  const imported = parseImportPayload(data);
+
+  if (!imported || imported.length === 0) {
+    showListMessage("No se encontraron códigos en el archivo.", "error");
+    return;
+  }
+
+  const existing = await getCodes();
+  const existingCodes = new Set(existing.map((item) => item.code.trim()));
+  const merged = [...existing];
+  let added = 0;
+  let skipped = 0;
+  let invalid = 0;
+
+  for (const raw of imported) {
+    const entry = normalizeImportedEntry(raw);
+
+    if (!entry) {
+      invalid += 1;
+      continue;
+    }
+
+    if (existingCodes.has(entry.code)) {
+      skipped += 1;
+      continue;
+    }
+
+    existingCodes.add(entry.code);
+    merged.push(entry);
+    added += 1;
+  }
+
+  if (added === 0) {
+    const parts = [];
+    if (skipped) parts.push(`${skipped} duplicado${skipped === 1 ? "" : "s"}`);
+    if (invalid) parts.push(`${invalid} inválido${invalid === 1 ? "" : "s"}`);
+    showListMessage(
+      parts.length ? `No se importó nada (${parts.join(", ")}).` : "No se importó ningún código.",
+      "error",
+    );
+    return;
+  }
+
+  await saveCodes(merged);
+  await renderList();
+
+  const parts = [`${added} importado${added === 1 ? "" : "s"}`];
+  if (skipped) parts.push(`${skipped} duplicado${skipped === 1 ? "" : "s"} omitido${skipped === 1 ? "" : "s"}`);
+  if (invalid) parts.push(`${invalid} inválido${invalid === 1 ? "" : "s"}`);
+  showListMessage(parts.join(". ") + ".");
+}
+
 function showFormMessage(text, type = "success") {
   formMessage.textContent = text;
   formMessage.className = `form-message form-message--${type}`;
@@ -673,11 +846,31 @@ tabButtons.forEach((btn) => {
 
 sortButtons.forEach((btn) => {
   btn.addEventListener("click", async () => {
-    listSort = btn.dataset.sort;
+    const field = btn.dataset.sort;
+
+    if (listSort === field) {
+      listSortDir = listSortDir === "asc" ? "desc" : "asc";
+    } else {
+      listSort = field;
+      listSortDir = "asc";
+    }
+
     updateSortButtons();
-    await browser.storage.local.set({ [SORT_KEY]: listSort });
+    await saveSortPrefs();
     await renderList();
   });
+});
+
+exportBtn.addEventListener("click", exportCodes);
+
+importBtn.addEventListener("click", () => {
+  importInput.click();
+});
+
+importInput.addEventListener("change", async () => {
+  const file = importInput.files?.[0];
+  importInput.value = "";
+  if (file) await importCodes(file);
 });
 
 codeInput.addEventListener("input", () => {

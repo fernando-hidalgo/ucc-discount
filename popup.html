@@ -44,33 +44,60 @@
     >
       <div class="list-toolbar">
         <span class="list-toolbar__label">Ordenar por</span>
-        <div class="sort-toggle" role="group" aria-label="Ordenar por">
+        <div class="list-toolbar__controls">
+          <div class="sort-toggle" role="group" aria-label="Ordenar por">
+            <button
+              type="button"
+              class="sort-toggle__btn sort-toggle__btn--active"
+              data-sort="expiry"
+              title="Caducidad: menor a mayor"
+              aria-label="Ordenar por caducidad, menor a mayor"
+              aria-pressed="true"
+            >
+              <svg class="sort-toggle__icon" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true">
+                <path d="M129-276q-86-86-86-209t86-209q86-86 209-86t209 86q86 86 86 209t-86 209q-86 86-209 86t-209-86Zm633 116v-526l-57 57-42-42 129-129 128 129-42 42-56-56v525h-60ZM421-354l41-41-94-94v-149h-60v172l113 112Z"/>
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="sort-toggle__btn"
+              data-sort="seats"
+              title="Butacas: menor a mayor"
+              aria-label="Ordenar por butacas, menor a mayor"
+              aria-pressed="false"
+            >
+              <svg class="sort-toggle__icon" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true">
+                <path d="M474-486q26-32 38.5-66t12.5-79q0-45-12.5-79T474-776q76-17 133.5 23T665-631q0 82-57.5 122T474-486Zm216 326v-94q0-51-26-95t-90-74q173 22 236.5 64T874-254v94H690Zm110-289v-100H700v-60h100v-100h60v100h100v60H860v100h-60Zm-593-74q-42-42-42-108t42-108q42-42 108-42t108 42q42 42 42 108t-42 108q-42 42-108 42t-108-42ZM0-160v-94q0-35 18.5-63.5T68-360q72-32 128.5-46T315-420q62 0 118 14t128 46q31 14 50 42.5t19 63.5v94H0Z"/>
+              </svg>
+            </button>
+          </div>
+          <span class="toolbar-divider" aria-hidden="true"></span>
           <button
             type="button"
-            class="sort-toggle__btn sort-toggle__btn--active"
-            data-sort="expiry"
-            title="Próximo a caducar"
-            aria-label="Ordenar por próximo a caducar"
-            aria-pressed="true"
+            class="toolbar-btn"
+            id="export-btn"
+            title="Exportar JSON"
+            aria-label="Exportar códigos a JSON"
           >
-            <svg class="sort-toggle__icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+            <svg class="sort-toggle__icon" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true">
+              <path d="M580 0v-60h300V0H580Zm150-124L584-270l42-42 74 74v-181h60v181l74-74 42 42-146 146Zm-510-36q-24 0-42-18t-18-42v-600q0-24 18-42t42-18h306l234 234v167H520v319H220Zm280-460h200L500-820v200Z"/>
             </svg>
           </button>
           <button
             type="button"
-            class="sort-toggle__btn"
-            data-sort="seats"
-            title="Número de butacas"
-            aria-label="Ordenar por número de butacas"
-            aria-pressed="false"
+            class="toolbar-btn"
+            id="import-btn"
+            title="Importar JSON"
+            aria-label="Importar códigos desde JSON"
           >
-            <svg class="sort-toggle__icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
+            <svg class="sort-toggle__icon" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true">
+              <path d="m201-79-42-43 128-128H161v-60h228v228h-60v-125L201-79Zm248-1v-290H160v-450q0-24.75 17.63-42.38Q195.25-880 220-880h340l240 240v500q0 24.75-17.62 42.37Q764.75-80 740-80H449Zm71-520h220L520-820l220 220-220-220v220Z"/>
             </svg>
           </button>
+          <input type="file" id="import-input" accept=".json,application/json" hidden>
         </div>
       </div>
+      <p id="list-message" class="list-message" hidden aria-live="polite"></p>
       <div id="code-list" class="code-list" aria-live="polite"></div>
       <p id="empty-list" class="empty-list" hidden>
         No hay códigos guardados. Añade uno en la pestaña «Añadir código».
